@@ -79,6 +79,12 @@ const ServiceSchema = new mongoose.Schema({
 }, {
     timestamps: true 
 });
+// --- NUEVO CAMPO PARA ESTADO DE CUMPLIMIENTO (Añade esto) ---
+isCompleted: {
+    type: Boolean,
+    default: false,
+},
+
 //.
 // El tercer parámetro 'nursing_services' especifica el nombre de la colección en la BD
 const Service = mongoose.model('Service', ServiceSchema, 'nursing_services');
@@ -205,6 +211,7 @@ app.listen(PORT, () => {
 
 // Exportamos la app (no es necesario aquí, pero buena práctica)
 export default app;
+
 
 
 
