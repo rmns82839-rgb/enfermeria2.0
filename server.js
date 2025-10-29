@@ -30,11 +30,32 @@ if (!MONGO_URI) {
 }
 
 
-// Definición del Esquema y Modelo
+// Definición del Esquema (Schema) para el modelo de Visita/Actividad
 const ServiceSchema = new mongoose.Schema({
-    name: {
+    // --- Campos de gestión del paciente y familiar (Nuevos) ---
+    patientName: {
         type: String,
-        required: [true, 'El nombre del servicio es obligatorio.'],
+        required: [true, 'El nombre del paciente es obligatorio.'],
+        trim: true,
+        maxlength: 100
+    },
+    familyName: {
+        type: String,
+        trim: true,
+        maxlength: 100
+    },
+    activity: { // La actividad realizada
+        type: String,
+        default: 'Baño asistido en ducha', // Nuevo valor por defecto
+        trim: true,
+        maxlength: 100
+    },
+    // -----------------------------------------------------------
+    
+    // Antiguos campos (renombrados conceptualmente)
+    name: { // Usaremos esto para el Título del Servicio (ej. 'Visita matutina')
+        type: String,
+        required: [true, 'El título del servicio es obligatorio.'],
         trim: true,
         maxlength: 100
     },
@@ -42,11 +63,12 @@ const ServiceSchema = new mongoose.Schema({
         type: String,
         trim: true,
         maxlength: 500,
-        default: 'Descripción pendiente.'
+        default: 'Registro de visita de enfermería.'
     },
     price: {
         type: Number,
         required: [true, 'El precio es obligatorio.'],
+        default: 20000, // Nuevo valor por defecto
         min: [0, 'El precio no puede ser negativo.'],
     },
     durationMinutes: {
@@ -55,8 +77,9 @@ const ServiceSchema = new mongoose.Schema({
         min: [5, 'La duración mínima es de 5 minutos.']
     },
 }, {
-    timestamps: true // Para createdAt y updatedAt
+    timestamps: true 
 });
+
 
 // El tercer parámetro 'nursing_services' especifica el nombre de la colección en la BD
 const Service = mongoose.model('Service', ServiceSchema, 'nursing_services');
@@ -183,3 +206,4 @@ app.listen(PORT, () => {
 
 // Exportamos la app (no es necesario aquí, pero buena práctica)
 export default app;
+
