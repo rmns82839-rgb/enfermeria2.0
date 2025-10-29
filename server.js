@@ -32,7 +32,7 @@ if (!MONGO_URI) {
 
 // Definición del Esquema (Schema) para el modelo de Visita/Actividad
 const ServiceSchema = new mongoose.Schema({
-    // --- Campos de gestión del paciente y familiar (Nuevos) ---
+    // Campos de gestión del paciente y familiar
     patientName: {
         type: String,
         required: [true, 'El nombre del paciente es obligatorio.'],
@@ -46,19 +46,16 @@ const ServiceSchema = new mongoose.Schema({
     },
     activity: { // La actividad realizada
         type: String,
-        default: 'Baño asistido en ducha', // Nuevo valor por defecto
+        default: 'Baño asistido en ducha', // Valor por defecto solicitado
         trim: true,
         maxlength: 100
     },
-    // -----------------------------------------------------------
-    
-    // Antiguos campos (renombrados conceptualmente)
-    name: { // Usaremos esto para el Título del Servicio (ej. 'Visita matutina')
-        type: String,
-        required: [true, 'El título del servicio es obligatorio.'],
-        trim: true,
-        maxlength: 100
+    // **NUEVO CAMPO para Agendamiento/Fecha de Visita**
+    visitDate: { 
+        type: Date,
+        required: [true, 'La fecha de la visita es obligatoria.']
     },
+    // --- Campos de Precio y Descripción ---
     description: {
         type: String,
         trim: true,
@@ -68,29 +65,21 @@ const ServiceSchema = new mongoose.Schema({
     price: {
         type: Number,
         required: [true, 'El precio es obligatorio.'],
-        default: 20000, // Nuevo valor por defecto
+        default: 20000, 
         min: [0, 'El precio no puede ser negativo.'],
     },
-    durationMinutes: {
-        type: Number,
-        default: 60,
-        min: [5, 'La duración mínima es de 5 minutos.']
-    },
-}, {
-    timestamps: true 
-});
-
-// --- NUEVO CAMPO PARA LA FIRMA ---
+    // --- Firma Digital ---
     signatureData: {
         type: String, // Se guarda la imagen codificada como texto Base64
         default: null,
     },
-    // ---------------------------------
+    
+    // **CAMPOS ELIMINADOS: name y durationMinutes ya NO están aquí**
+
 }, {
     timestamps: true 
 });
-
-
+//.
 // El tercer parámetro 'nursing_services' especifica el nombre de la colección en la BD
 const Service = mongoose.model('Service', ServiceSchema, 'nursing_services');
 
@@ -216,5 +205,6 @@ app.listen(PORT, () => {
 
 // Exportamos la app (no es necesario aquí, pero buena práctica)
 export default app;
+
 
 
