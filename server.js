@@ -200,7 +200,29 @@ app.delete('/api/services/:id', async (req, res) => {
         res.status(500).json({ message: 'Error al eliminar el servicio', error: error.message });
     }
 });
+// server.js (AÑADIR ESTO AL FINAL)
 
+// Importar 'path' para trabajar con rutas de archivos (es nativo de Node.js)
+import path from 'path'; 
+import { fileURLToPath } from 'url'; // Necesario si usas 'import'
+
+// Esto es necesario para obtener __dirname cuando se usa import/export
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// --- 5. Servir el Frontend (index.html) ---
+
+// Servir archivos estáticos (por si acaso tienes CSS/JS externos)
+app.use(express.static(__dirname));
+
+// Ruta para servir el index.html en la raíz
+app.get('/', (req, res) => {
+    // Busca index.html en la carpeta actual
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// El resto de tus rutas API (/api/services) seguirán funcionando.
+// ...
 
 // ===================================
 // 5. Iniciar el Servidor
@@ -212,3 +234,4 @@ app.listen(PORT, () => {
 });
 
 export default app;
+
