@@ -1,36 +1,50 @@
 // server.js
 // API RESTful para la gestión de Servicios de Enfermería (CRUD)
+// CORREGIDO: El campo 'isCompleted' se movió dentro del esquema.
 
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
-import 'dotenv/config'; // Esto está bien para Render si NO tienes el .env en el repositorio
+import 'dotenv/config'; 
 
 const app = express();
 
+// ===================================
+// 1. CONFIGURACIÓN INICIAL
+// ===================================
+
 // Usar el puerto de Render o 3000 localmente
 const PORT = process.env.PORT || 3000;
-const MONGO_URI = process.env.MONGO_URI;
+// CRÍTICO: Asegúrate de que MONGO_URI esté configurada como variable de entorno en Render.
+const MONGO_URI = process.env.MONGO_URI; 
+
+// Middlewares
+app.use(cors());
+app.use(express.json());
+
 
 // ===================================
-// 1. Conexión a MongoDB Atlas
+// 2. Conexión a MongoDB Atlas
 // ===================================
 
 if (!MONGO_URI) {
-    console.error('❌ Error Crítico: MONGO_URI no está definida. Verifica tu archivo .env o las variables de entorno de Render.');
-    // En un entorno real, lanzarías una excepción o te asegurarías de que esto no ocurra.
-} else {
-    mongoose.connect(MONGO_URI)
-        .then(() => console.log('✅ MongoDB Atlas conectado exitosamente.'))
-        .catch(err => {
-            console.error('❌ Error de conexión a MongoDB:', err.message);
-            // Salir si no hay conexión a la base de datos
-            process.exit(1); 
-        });
+    console.error('❌ Error Crítico: MONGO_URI no está definida. Verifica las variables de entorno de Render.');
+    process.exit(1); 
 }
 
+mongoose.connect(MONGO_URI)
+    .then(() => console.log('✅ MongoDB Atlas conectado exitosamente.'))
+    .catch(err => {
+        console.error('❌ Error de conexión a MongoDB:', err.message);
+        // Salir si no hay conexión a la base de datos
+        process.exit(1); 
+    });
 
-// Definición del Esquema (Schema) para el modelo de Visita/Actividad
+
+// ===================================
+// 3. DEFINICIÓN DEL ESQUEMA Y MODELO
+// ===================================
+
 const ServiceSchema = new mongoose.Schema({
     // Campos de gestión del paciente y familiar
     patientName: {
@@ -46,11 +60,11 @@ const ServiceSchema = new mongoose.Schema({
     },
     activity: { // La actividad realizada
         type: String,
-        default: 'Baño asistido en ducha', // Valor por defecto solicitado
+        default: 'Baño asistido en ducha', 
         trim: true,
         maxlength: 100
     },
-    // **NUEVO CAMPO para Agendamiento/Fecha de Visita**
+    // Fecha y Hora de Visita
     visitDate: { 
         type: Date,
         required: [true, 'La fecha de la visita es obligatoria.']
@@ -68,40 +82,28 @@ const ServiceSchema = new mongoose.Schema({
         default: 20000, 
         min: [0, 'El precio no puede ser negativo.'],
     },
-    // --- Firma Digital ---
+    // Firma Digital
     signatureData: {
-        type: String, // Se guarda la imagen codificada como texto Base64
+        type: String, 
         default: null,
     },
     
-    // **CAMPOS ELIMINADOS: name y durationMinutes ya NO están aquí**
+    // ⭐ CAMPO DE ESTADO SOLICITADO (¡CORREGIDO: Ahora está DENTRO del esquema!)
+    isCompleted: { 
+        type: Boolean,
+        default: false,
+    }
 
 }, {
-    timestamps: true 
+    timestamps: true // Añade createdAt y updatedAt
 });
 
-isCompleted: {
-    type: Boolean,
-    default: false,
-},
-
-//.
-// El tercer parámetro 'nursing_services' especifica el nombre de la colección en la BD
+// El tercer parámetro 'nursing_services' especifica el nombre de la colección
 const Service = mongoose.model('Service', ServiceSchema, 'nursing_services');
 
 
 // ===================================
-// 2. Middlewares de Express
-// ===================================
-
-// Habilitar CORS para permitir peticiones desde el frontend
-app.use(cors());
-
-// Parsear el cuerpo de las solicitudes como JSON
-app.use(express.json());
-
-// ===================================
-// 3. Rutas de la API (Endpoints CRUD)
+// 4. Rutas de la API (Endpoints CRUD)
 // ===================================
 
 // RUTA RAIZ: Comprobación de estado
@@ -121,7 +123,6 @@ app.post('/api/services', async (req, res) => {
         const savedService = await newService.save();
         res.status(201).json(savedService);
     } catch (error) {
-        // Mongoose Validation Error (código 11000 es duplicado)
         if (error.name === 'ValidationError') {
             const messages = Object.values(error.errors).map(val => val.message);
             return res.status(400).json({ message: 'Error de validación', errors: messages });
@@ -133,7 +134,8 @@ app.post('/api/services', async (req, res) => {
 // --- READ ALL (GET) ---
 app.get('/api/services', async (req, res) => {
     try {
-        const services = await Service.find().sort({ name: 1 });
+        // Se ordena por fecha de visita (visitDate) para la agenda
+        const services = await Service.find().sort({ visitDate: 1 }); 
         res.status(200).json(services);
     } catch (error) {
         res.status(500).json({ message: 'Error al obtener los servicios', error: error.message });
@@ -149,7 +151,6 @@ app.get('/api/services/:id', async (req, res) => {
         }
         res.status(200).json(service);
     } catch (error) {
-        // Manejar IDs inválidos de MongoDB
         if (error.name === 'CastError') {
             return res.status(400).json({ message: 'ID de servicio no válido.' });
         }
@@ -163,7 +164,7 @@ app.put('/api/services/:id', async (req, res) => {
         const updatedService = await Service.findByIdAndUpdate(
             req.params.id, 
             req.body, 
-            { new: true, runValidators: true } // Devuelve el nuevo documento y corre validadores
+            { new: true, runValidators: true }
         );
 
         if (!updatedService) {
@@ -193,7 +194,7 @@ app.delete('/api/services/:id', async (req, res) => {
         res.status(204).send(); 
         
     } catch (error) {
-         if (error.name === 'CastError') {
+        if (error.name === 'CastError') {
             return res.status(400).json({ message: 'ID de servicio no válido para eliminar.' });
         }
         res.status(500).json({ message: 'Error al eliminar el servicio', error: error.message });
@@ -202,17 +203,12 @@ app.delete('/api/services/:id', async (req, res) => {
 
 
 // ===================================
-// 4. Iniciar el Servidor
+// 5. Iniciar el Servidor
 // ===================================
 
 app.listen(PORT, () => {
     console.log(`🚀 Servidor Express escuchando en http://localhost:${PORT}`);
+    console.log(`Render URL: ${process.env.RENDER_EXTERNAL_URL || 'N/A'}`);
 });
 
-// Exportamos la app (no es necesario aquí, pero buena práctica)
 export default app;
-
-
-
-
-
