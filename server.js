@@ -79,7 +79,7 @@ const ServiceSchema = new mongoose.Schema({
 }, {
     timestamps: true 
 });
-// --- NUEVO CAMPO PARA ESTADO DE CUMPLIMIENTO (Añade esto) ---
+
 isCompleted: {
     type: Boolean,
     default: false,
@@ -211,6 +211,7 @@ app.listen(PORT, () => {
 
 // Exportamos la app (no es necesario aquí, pero buena práctica)
 export default app;
+
 
 
 
