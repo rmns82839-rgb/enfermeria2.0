@@ -1,22 +1,27 @@
 // server.js
 // API RESTful para la gestión de Servicios de Enfermería (CRUD)
-// CORREGIDO: El campo 'isCompleted' se movió dentro del esquema.
+// MEJORADO: Eliminados los campos 'description' y 'signatureData'.
 
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import 'dotenv/config'; 
+import path from 'path'; 
+import { fileURLToPath } from 'url';
 
 const app = express();
+
+// Variables de Entorno y Configuración
+const PORT = process.env.PORT || 3000;
+const MONGO_URI = process.env.MONGO_URI; 
+
+// Obtener __dirname para servir archivos estáticos (index.html)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ===================================
 // 1. CONFIGURACIÓN INICIAL
 // ===================================
-
-// Usar el puerto de Render o 3000 localmente
-const PORT = process.env.PORT || 3000;
-// CRÍTICO: Asegúrate de que MONGO_URI esté configurada como variable de entorno en Render.
-const MONGO_URI = process.env.MONGO_URI; 
 
 // Middlewares
 app.use(cors());
@@ -28,7 +33,7 @@ app.use(express.json());
 // ===================================
 
 if (!MONGO_URI) {
-    console.error('❌ Error Crítico: MONGO_URI no está definida. Verifica las variables de entorno de Render.');
+    console.error('❌ Error Crítico: MONGO_URI no está definida.');
     process.exit(1); 
 }
 
@@ -36,7 +41,6 @@ mongoose.connect(MONGO_URI)
     .then(() => console.log('✅ MongoDB Atlas conectado exitosamente.'))
     .catch(err => {
         console.error('❌ Error de conexión a MongoDB:', err.message);
-        // Salir si no hay conexión a la base de datos
         process.exit(1); 
     });
 
@@ -69,30 +73,20 @@ const ServiceSchema = new mongoose.Schema({
         type: Date,
         required: [true, 'La fecha de la visita es obligatoria.']
     },
-    // --- Campos de Precio y Descripción ---
-    description: {
-        type: String,
-        trim: true,
-        maxlength: 500,
-        default: 'Registro de visita de enfermería.'
-    },
+    // --- Campo de Precio ---
     price: {
         type: Number,
         required: [true, 'El precio es obligatorio.'],
         default: 20000, 
         min: [0, 'El precio no puede ser negativo.'],
     },
-    // Firma Digital
-    signatureData: {
-        type: String, 
-        default: null,
-    },
     
-    // ⭐ CAMPO DE ESTADO SOLICITADO (¡CORREGIDO: Ahora está DENTRO del esquema!)
+    // Campo de Estado
     isCompleted: { 
         type: Boolean,
         default: false,
     }
+    // CAMPOS ELIMINADOS: 'description' y 'signatureData'
 
 }, {
     timestamps: true // Añade createdAt y updatedAt
@@ -106,8 +100,13 @@ const Service = mongoose.model('Service', ServiceSchema, 'nursing_services');
 // 4. Rutas de la API (Endpoints CRUD)
 // ===================================
 
-// RUTA RAIZ: Comprobación de estado
-app.get('/', (req, res) => {
+// RUTA RAIZ: Comprobación de estado y servir index.html
+app.get('/', (req, res, next) => {
+    // Si la solicitud acepta HTML (es un navegador), sirve el frontend
+    if (req.accepts('html')) {
+        return res.sendFile(path.join(__dirname, 'index.html'));
+    }
+    // Si no, sirve la respuesta JSON de estado (para tests/API calls)
     res.status(200).json({ 
         message: 'API de Servicios de Enfermería funcionando.',
         status: 'online',
@@ -115,6 +114,10 @@ app.get('/', (req, res) => {
         environment: process.env.NODE_ENV || 'development'
     });
 });
+
+// Servir archivos estáticos como index.html si no es la ruta raíz.
+app.use(express.static(__dirname));
+
 
 // --- CREATE (POST) ---
 app.post('/api/services', async (req, res) => {
@@ -134,7 +137,6 @@ app.post('/api/services', async (req, res) => {
 // --- READ ALL (GET) ---
 app.get('/api/services', async (req, res) => {
     try {
-        // Se ordena por fecha de visita (visitDate) para la agenda
         const services = await Service.find().sort({ visitDate: 1 }); 
         res.status(200).json(services);
     } catch (error) {
@@ -190,7 +192,6 @@ app.delete('/api/services/:id', async (req, res) => {
         if (!deletedService) {
             return res.status(404).json({ message: 'Servicio no encontrado para eliminar.' });
         }
-        // 204 No Content indica éxito sin cuerpo de respuesta
         res.status(204).send(); 
         
     } catch (error) {
@@ -200,29 +201,7 @@ app.delete('/api/services/:id', async (req, res) => {
         res.status(500).json({ message: 'Error al eliminar el servicio', error: error.message });
     }
 });
-// server.js (AÑADIR ESTO AL FINAL)
 
-// Importar 'path' para trabajar con rutas de archivos (es nativo de Node.js)
-import path from 'path'; 
-import { fileURLToPath } from 'url'; // Necesario si usas 'import'
-
-// Esto es necesario para obtener __dirname cuando se usa import/export
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// --- 5. Servir el Frontend (index.html) ---
-
-// Servir archivos estáticos (por si acaso tienes CSS/JS externos)
-app.use(express.static(__dirname));
-
-// Ruta para servir el index.html en la raíz
-app.get('/', (req, res) => {
-    // Busca index.html en la carpeta actual
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// El resto de tus rutas API (/api/services) seguirán funcionando.
-// ...
 
 // ===================================
 // 5. Iniciar el Servidor
@@ -230,8 +209,6 @@ app.get('/', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`🚀 Servidor Express escuchando en http://localhost:${PORT}`);
-    console.log(`Render URL: ${process.env.RENDER_EXTERNAL_URL || 'N/A'}`);
 });
 
 export default app;
-
